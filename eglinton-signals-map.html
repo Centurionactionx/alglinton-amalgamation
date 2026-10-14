@@ -1,0 +1,564 @@
+<meta charset="utf-8">
+<title>Eglinton Allen Signal Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one column. The reference map with live signal overlays, controls, then the cycle timing chart. */
+:root{
+  --bg:#eef0ee; --surface:#ffffff; --ink:#1b1f1d; --muted:#5c6560; --rule:#d3d8d4; --accent:#1d4f91;
+  --go:#1f9a4f; --amber:#e2a40c; --stop:#cf3a2c; --stop-tint:#f1d9d5; --idle:#c8ccc9; --headbg:#17191b;
+  --c-left:#8e44d9; --c-thru:#2b6fd6; --c-ramp:#0f9d9a; --c-wb:#5f666d; --c-wbr:#d4579b; --c-bus:#d6362b; --ped:#111;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121514; --surface:#1b1f1e; --ink:#e7ebe8; --muted:#9aa39e; --rule:#2d3431; --accent:#7fa8e6; --stop-tint:#4a2622; --idle:#3a403d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121514; --surface:#1b1f1e; --ink:#e7ebe8; --muted:#9aa39e; --rule:#2d3431; --accent:#7fa8e6; --stop-tint:#4a2622; --idle:#3a403d; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:20px 40px;display:grid;gap:16px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,3.5vw,2.2rem);line-height:1.1;margin:0;text-wrap:balance}
+.lead{margin:4px 0 0;color:var(--muted);max-width:68ch}
+.lead a{color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:6px}
+.mapwrap{overflow-x:auto}
+.map{position:relative;min-width:620px}
+.map img{display:block;width:100%;max-width:none}
+.map canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.head{position:absolute;width:2%;aspect-ratio:1;transform:translate(-50%,-50%);background:var(--headbg);border-radius:22%;box-shadow:0 0 0 1.5px #fff}
+.head svg{display:block;width:100%;height:100%;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.head.G svg{stroke:var(--go)} .head.Y svg{stroke:var(--amber)} .head.R svg{stroke:var(--stop)}
+.xw{position:absolute;border-radius:2px;opacity:.85;background:var(--idle);outline:1.5px solid #fff}
+.xw.W{background:var(--go)}
+.xw.F{background:var(--amber)}
+.xw.F.off{opacity:.25}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.seg button,.btn{font:600 14px var(--f-body);color:var(--ink);background:var(--surface);border:0;padding:7px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.btn{border:1px solid var(--rule);border-radius:6px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--rule)}
+.stat{background:var(--surface);padding:10px 14px;min-width:0}
+.stat .k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:500 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.stat .s{font-size:13px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0}
+.gwrap{padding:14px}
+.gantt{--lab:230px;--p:0;position:relative;display:grid;grid-template-columns:var(--lab) 1fr;row-gap:3px;margin-top:10px;font-size:13px}
+.g-lab{padding-right:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:18px}
+.g-bar{position:relative;height:18px;background:var(--stop-tint);border-radius:2px;overflow:hidden}
+.g-bar.ped{background:var(--idle)}
+.g-bar span{position:absolute;top:0;bottom:0}
+.g-bar .G,.g-bar .W{background:var(--go)}
+.g-bar .Y{background:var(--amber)}
+.g-bar .F{background:repeating-linear-gradient(135deg,var(--amber) 0 4px,transparent 4px 7px)}
+.g-group{grid-column:1/-1;font:600 12px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:8px}
+#phases{background:transparent;height:22px}
+#phases span{border:1px solid var(--rule);border-radius:2px;background:var(--bg);font-size:12px;font-weight:600;padding:0 6px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#phases span.on{border-color:var(--accent);color:var(--accent)}
+.playhead{position:absolute;top:0;bottom:22px;width:2px;background:var(--ink);left:calc(var(--lab) + (100% - var(--lab)) * var(--p));pointer-events:none}
+.note{font-size:13px;color:var(--muted);max-width:80ch;margin:0}
+@media (max-width:640px){.gantt{--lab:132px;font-size:12px}#phases span{font-size:11px;padding:0 3px}}
+/* Recording layout (opened from a file): map and legends left, counters and timing chart right, no controls. */
+body.record{margin:0;min-height:100vh;display:flex;align-items:center}
+.record .wrap{max-width:none;width:100%;box-sizing:border-box;padding-block:20px;column-gap:24px;align-items:start;
+  grid-template-columns:minmax(0,2fr) minmax(0,1fr);grid-template-rows:auto auto 1fr auto auto;
+  grid-template-areas:"head head" "map stats" "map gantt" "legc legc" "legs legs"}
+.record header{grid-area:head} .record .mapwrap{grid-area:map} .record #legc{grid-area:legc} .record #legs{grid-area:legs}
+.record .stats{grid-area:stats;grid-template-columns:1fr 1fr} .record .gwrap{grid-area:gantt;align-self:stretch}
+.record .controls,.record .note,.record .lead{display:none}
+.record .gantt{--lab:200px;row-gap:2px}
+.record .g-bar{height:15px} .record .g-lab{line-height:15px} .record .g-group{margin-top:5px}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Eglinton and Allen Road</h1>
+    <p class="lead">Live signals and traffic drawn on the reference map: each square is a signal head, each coloured bar is a crosswalk, and the purple cars are eastbound drivers turning left onto Allen Rd N. The earlier drawn version is <a href="eglinton-signals.html">here</a>.</p>
+  </header>
+
+  <div class="card mapwrap"><div class="map" id="map"><img src="eglinton-map.png" alt="Reference map of Eglinton Ave W at Allen Rd S and Allen Rd N with Eglinton West Station and its entrances"></div></div>
+
+  <div class="controls">
+    <button class="btn" id="play">Pause</button>
+    <div class="seg" role="group" aria-label="Speed" id="speeds">
+      <button data-s="1" aria-pressed="false">1×</button>
+      <button data-s="2" aria-pressed="false">2×</button>
+      <button data-s="4" aria-pressed="true">4×</button>
+      <button data-s="8" aria-pressed="false">8×</button>
+    </div>
+  </div>
+
+  <div class="card stats">
+    <div class="stat"><div class="k">Cycle clock</div><div class="v" id="clock">0 s</div><div class="s" id="phase">–</div></div>
+    <div class="stat"><div class="k">Left onto Allen N</div><div class="v" id="left">–</div><div class="s" id="lefth">last full cycle</div></div>
+    <div class="stat"><div class="k">Westbound right onto Allen N</div><div class="v" id="right">–</div><div class="s">last full cycle</div></div>
+    <div class="stat"><div class="k">Eastbound past Allen S</div><div class="v" id="east">–</div><div class="s">last full cycle</div></div>
+  </div>
+
+  <div class="legend" id="legc">
+    <span><i style="background:var(--c-left)"></i>Eastbound, turning left onto Allen N</span>
+    <span><i style="background:var(--c-thru)"></i>Eastbound through</span>
+    <span><i style="background:var(--c-ramp)"></i>Off the Allen S ramp</span>
+    <span><i style="background:var(--c-wb)"></i>Westbound</span>
+    <span><i style="background:var(--c-wbr)"></i>Westbound, turning right onto Allen N</span>
+    <span><i style="background:var(--c-bus)"></i>TTC bus</span>
+  </div>
+  <div class="legend" id="legs">
+    <span><i style="background:var(--go)"></i>Green / walk</span>
+    <span><i style="background:var(--amber)"></i>Amber / walk countdown (flashing)</span>
+    <span><i style="background:var(--stop)"></i>Red</span>
+    <span><i style="background:var(--idle)"></i>Crosswalk not enabled</span>
+  </div>
+
+  <section class="card gwrap">
+    <h2>One 120-second cycle</h2>
+    <div class="gantt" id="gantt"></div>
+  </section>
+
+  <p class="note" id="note"></p>
+</div>
+
+<script>
+// opened straight from a file (record.bat) = full-screen recording layout
+if (location.protocol === 'file:' || location.hash === '#record') document.body.classList.add('record');
+const CYCLE = 120;
+const veh = (a, b) => [[a, b, 'G'], [b, b + 3, 'Y']];
+const ped = (a, b, c) => [[a, b, 'W'], [b, c, 'F']];
+// [start, end, state] in seconds; uncovered = red. Ends past 120 wrap. Every crosswalk walks every cycle.
+const PLAN = {
+    // EB left onto Allen N comes on 2 s after Allen S turns green eastbound, so it moves with that wave
+    // Allen S eastbound goes red (43 s) 5 s before the left arrow at Allen N (48 s), so nobody is left stuck at Allen S
+    EBT_S: veh(0, 40), EBL_N: veh(2, 45),
+    // lagging bus arrow: on after Allen S westbound turns red, off together with eastbound
+    BUS_S: veh(35, 40),
+    // WB through at Allen N keeps going into the ramp phase; those cars wait in the gap's inner lane for Allen S
+    // WB through at Allen N stays on until the WB right arrow ends; both turn off together
+    // Allen S westbound turns green with eastbound and ends earlier
+    WBT_S: veh(0, 30), WBT_N: veh(50, 115),
+    // both Allen S ramp lanes are always in sync; the right lane yields to the west crosswalk, then runs free
+    SBL: veh(45, 115), SBR: veh(45, 115),
+    // the crosswalk across the Allen S ramp walks as soon as Eglinton turns green through Allen S
+    PW: ped(45, 52, 67), PRS: ped(0, 7, 18),
+    // east crosswalk at Strathearn walks early in phase 1, when only light eastbound through traffic at Allen N has to hold
+    EBT_N: [[26, 117, 'G'], [117, 120, 'Y']], PE: ped(2, 9, 24),
+    PRN: ped(50, 57, 69), WBR_N: veh(71, 115),
+};
+const BANDS = [[0, 33, 'Phase 1 · Eglinton both ways'], [33, 43, 'Phase 2 · Eastbound + bus arrow'], [43, 120, 'Phase 3 · Allen S ramp']];
+const CONFLICTS = [
+  ['EBT_S', 'SBL'], ['EBT_S', 'PW'], ['WBT_S', 'SBL'], ['WBT_S', 'SBR'], ['WBT_S', 'BUS_S'], ['WBT_S', 'PW'],
+  ['BUS_S', 'PW'], ['BUS_S', 'PRS'], ['BUS_S', 'SBL'], ['SBL', 'PRS'], ['SBR', 'PRS'],
+  ['EBL_N', 'WBT_N'], ['EBL_N', 'WBR_N'], ['EBL_N', 'PRN'], ['WBR_N', 'PRN'], ['WBR_N', 'PE'], ['WBT_N', 'PE'], ['EBT_N', 'PE'],
+];
+function sig(plan, mv, t) {
+  for (const [a, b, s] of plan[mv] || []) if ((t >= a && t < b) || (t + CYCLE >= a && t + CYCLE < b)) return s;
+  return 'R';
+}
+function conflictCheck() {
+  const bad = [];
+  for (let t = 0; t < CYCLE; t += 0.25)
+    for (const [x, y] of CONFLICTS)
+      if (sig(PLAN, x, t) !== 'R' && sig(PLAN, y, t) !== 'R') bad.push(`t=${t} ${x}/${y}`);
+  console.assert(bad.length === 0, 'signal conflicts', bad);
+  return bad;
+}
+
+// ---- Overlays, in pixels of the 991 x 451 reference map ----
+const IMG_W = 991, IMG_H = 451;
+const HEADS = [
+  // [movement, x, y, arrow, label]; at least 22 px apart so heads never overlap
+  ['BUS_S', 365, 288, 'EN', 'Bus left into station'], ['EBT_S', 365, 311, 'E', 'Eglinton eastbound through'],
+  ['WBT_S', 486, 268, 'W', 'Eglinton westbound through'],
+  ['SBR', 405, 220, 'SW', 'Allen S ramp, right lane'], ['SBL', 429, 220, 'SE', 'Allen S ramp, left lane'],
+  ['EBL_N', 645, 293, 'EN', 'Eastbound left onto Allen N'], ['EBT_N', 645, 316, 'E', 'Eglinton eastbound through'],
+  ['WBR_N', 762, 252, 'WN', 'Westbound right onto Allen N'], ['WBT_N', 762, 275, 'W', 'Eglinton westbound through'],
+];
+const CROSSWALKS = [
+  // [movement, x, y, w, h, label, walk from, walk to]
+  ['PW', 386, 249, 10, 78, 'Main entrance to 13 Division', [391, 249], [391, 327]],
+  ['PRS', 397, 237, 60, 10, 'Across the Allen S ramp', [397, 242], [457, 242]],
+  ['PRN', 657, 236, 56, 10, 'Across the Allen N ramp', [657, 241], [713, 241]],
+  ['PE', 726, 250, 10, 78, 'Strathearn to Secondary entrance', [731, 250], [731, 327]],
+];
+const GLYPH = {
+  E: 'M-6 0H6M2.5-3.5L6 0 2.5 3.5', W: 'M6 0H-6M-2.5-3.5L-6 0-2.5 3.5',
+  EN: 'M-6 4H1V-6M-2.5-2.5L1-6 4.5-2.5', WN: 'M6 4H-1V-6M-4.5-2.5L-1-6 2.5-2.5',
+  SE: 'M-4-6V1H6M2.5-2.5L6 1 2.5 4.5', SW: 'M4-6V1H-6M-2.5-2.5L-6 1-2.5 4.5',
+};
+const pctX = x => (x / IMG_W) * 100 + '%', pctY = y => (y / IMG_H) * 100 + '%';
+const mapEl = document.getElementById('map');
+const xwEls = CROSSWALKS.map(([mv, x, y, w, h, label]) => {
+  const d = document.createElement('div');
+  d.className = 'xw'; d.title = 'Crosswalk: ' + label; d.setAttribute('role', 'img');
+  Object.assign(d.style, { left: pctX(x), top: pctY(y), width: (w / IMG_W) * 100 + '%', height: (h / IMG_H) * 100 + '%' });
+  mapEl.appendChild(d);
+  return [mv, d, label];
+});
+const cv = document.createElement('canvas'); // cars and pedestrians, above the crosswalk bars, under the signal heads
+cv.setAttribute('aria-hidden', 'true');
+mapEl.appendChild(cv);
+const ctx = cv.getContext('2d');
+const headEls = HEADS.map(([mv, x, y, g, label]) => {
+  const d = document.createElement('div');
+  d.className = 'head'; d.style.left = pctX(x); d.style.top = pctY(y); d.title = label; d.setAttribute('role', 'img');
+  d.innerHTML = `<svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="${GLYPH[g]}"/></svg>`;
+  mapEl.appendChild(d);
+  return [mv, d, label];
+});
+
+// ---- Lane paths, traced on the reference map in pixels (about 2 px per metre) ----
+const K = 2;
+const SEG = {};
+function seg(id, px, mv = null) {
+  const pts = px.map(([x, y]) => [x / K, y / K]), cum = [0];
+  for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+  SEG[id] = { id, pts, cum, len: cum[cum.length - 1], mv };
+}
+function posAt(s, d) {
+  const { pts, cum } = s;
+  let k = 1;
+  while (k < pts.length - 1 && cum[k] < d) k++;
+  const f = Math.min(1, Math.max(0, (d - cum[k - 1]) / (cum[k] - cum[k - 1] || 1)));
+  const [x0, y0] = pts[k - 1], [x1, y1] = pts[k];
+  return [x0 + (x1 - x0) * f, y0 + (y1 - y0) * f, Math.atan2(y1 - y0, x1 - x0)];
+}
+const pxAt = o => { const [x, y] = posAt(SEG[o.route[o.i]], o.d); return [x * K, y * K]; };
+// lane centre lines (y) and stop lines (x)
+const yWo = 258, yWi = 276, yB = 290, yM = 301, yR = 312;   // west of Allen S
+const yGo = 263.5, yGi = 278, yL1 = 289.5, yL2 = 303, yT = 316.5; // the gap
+const yR2 = 248.5, yR1 = 261.5, yET = 275, yEL = 288.5;    // east approach, westbound
+const S_EB = 384, S_WB = 469, ISL_END = 509, BAY = 525, N_EB = 666, N_WB = 741;
+// eastbound
+seg('wBus', [[-20, yB], [S_EB, yB]]);
+seg('wEB1', [[-20, yM], [S_EB, yM]]);
+seg('wEB2', [[-20, yR], [S_EB, yR]]);
+seg('sL1', [[S_EB, yM], [S_WB, yL2]], 'EBT_S');
+seg('sR', [[S_EB, yR], [S_WB, yT]], 'EBT_S');
+// the bus-lane island blocks the inner row until ISL_END; the left-turn bays open just past it
+seg('gM', [[S_WB, yL2], [ISL_END, yL2]]);
+seg('gS1', [[ISL_END, yL2], [BAY, yL1]]);
+seg('gL1', [[BAY, yL1], [N_EB, yL1]]);
+seg('gR', [[S_WB, yT], [ISL_END, yT]]);
+seg('gS2', [[ISL_END, yT], [BAY, yL2]]);
+seg('gL2', [[BAY, yL2], [N_EB, yL2]]);
+seg('gT2', [[ISL_END, yT], [N_EB, yT]]);
+// lefts onto Allen N stay west of the island lobe and the ramp-mouth triangle
+seg('nL1', [[N_EB, yL1], [673, 285], [675, 270], [676, 250], [679, 230], [681, 200]], 'EBL_N');
+seg('nL2', [[N_EB, yL2], [672, 300], [683, 282], [687, 265], [690, 245], [695, 225], [697, 200]], 'EBL_N');
+seg('ramp1', [[681, 200], [678, 150], [673, 90], [670, 0], [670, -20]]);
+seg('ramp2', [[697, 200], [694, 150], [689, 90], [688, 0], [688, -20]]);
+seg('ramp1b', [[681, 200], [678, 150], [673, 90], [670, 0], [670, -20]]);
+seg('ramp2b', [[697, 200], [694, 150], [689, 90], [688, 0], [688, -20]]);
+seg('nT', [[N_EB, yT], [725, 317], [757, 312], [770, 312]], 'EBT_N');
+seg('eEB', [[770, 312], [1010, 312]]);
+// buses into the station loop: pull into the middle on green, wait for a gap (or the arrow)
+seg('sBusA', [[S_EB, yB], [432, yB]], 'BUSIN');
+seg('sBusB', [[432, yB], [440, 283], [446, 265], [448.5, 248], [448.5, 236]], 'BUSL');
+seg('loop', [[448.5, 236], [448.5, 76], [456, 70], [572, 70], [578, 76], [578, 236]]);
+const PLATFORM = 100; // metres along the loop where buses dwell
+seg('xBus', [[578, 236], [578, 252], [570, yGo], [560, yGo]], 'STOP');
+seg('gWBx', [[560, yGo], [S_WB, yGo]]);
+seg('sBusR', [[S_WB, yGo], [458, 262], [450, 252], [448.5, 236]], 'BUSR');
+seg('sWBo', [[S_WB, yGo], [S_EB, yWo]], 'WBT_S');
+seg('wWBo', [[S_EB, yWo], [-20, yWo]]);
+// westbound from the east: through, buses (curb side of the gap), left bay into Strathearn
+seg('eWTa', [[1010, yET], [915, yET]]);
+seg('eWT', [[915, yET], [N_WB, yET]]);
+seg('nWT', [[N_WB, yET], [700, 277], [N_EB, yGi]], 'WBT_N');
+seg('nWTo', [[N_WB, yET], [700, 268], [N_EB, yGo]], 'WBT_N');
+seg('gWBi', [[N_EB, yGi], [S_WB, yGi]]);
+seg('gWBo1', [[N_EB, yGo], [560, yGo]]);
+seg('sWBi', [[S_WB, yGi], [S_EB, yWi]], 'WBT_S');
+seg('wWBi', [[S_EB, yWi], [-20, yWi]]);
+seg('eWL', [[915, yET], [900, yEL], [778, yEL]]);
+seg('nWL', [[778, yEL], [770, 292], [748, 312], [741, 327], [741, 470]], 'YIELD'); // around the east island lobe
+// two full right-turn lanes from the east edge onto Allen N, east of the triangle island
+seg('eR1', [[1010, yR1], [N_WB, yR1]]);
+seg('eR2', [[1010, 251], [900, 250], [860, yR2], [N_WB, yR2]]);
+seg('nR1', [[N_WB, yR1], [712, 261.5], [702, 251], [691, 240], [684, 225], [681, 200]], 'WBR_N');
+seg('nR2', [[N_WB, yR2], [708, yR2], [700, 241], [697, 225], [697, 200]], 'WBR_N');
+// Allen S ramp
+seg('rL', [[423, -20], [423, 234]]);
+seg('rR', [[407, -20], [407, 234]]);
+seg('sSBL', [[423, 234], [425, 258], [445, 300], [S_WB, yT]], 'SBL');
+seg('sSBR', [[407, 234], [406, 250], [398, yWo], [S_EB, yWo]], 'SBR');
+
+const ROUTES = {
+  eL1: ['wEB1', 'sL1', 'gM', 'gS1', 'gL1', 'nL1', 'ramp1'],
+  eL2: ['wEB2', 'sR', 'gR', 'gS2', 'gL2', 'nL2', 'ramp2'],
+  eT: ['wEB2', 'sR', 'gR', 'gT2', 'nT', 'eEB'],
+  bus: ['wBus', 'sBusA', 'sBusB', 'loop', 'xBus', 'gWBx', 'sWBo', 'wWBo'],
+  busW: ['eWTa', 'eWT', 'nWTo', 'gWBo1', 'gWBx', 'sBusR', 'loop', 'xBus', 'gWBx', 'sWBo', 'wWBo'],
+  sbl: ['rL', 'sSBL', 'gR', 'gT2', 'nT', 'eEB'],
+  sbr: ['rR', 'sSBR', 'wWBo'],
+  wT: ['eWTa', 'eWT', 'nWT', 'gWBi', 'sWBi', 'wWBi'],
+  wL: ['eWTa', 'eWL', 'nWL'],
+  wR1: ['eR1', 'nR1', 'ramp1b'],
+  wR2: ['eR2', 'nR2', 'ramp2b'],
+};
+const COLOR = { eL1: 'c-left', eL2: 'c-left', eT: 'c-thru', bus: 'c-bus', busW: 'c-bus', sbl: 'c-ramp', sbr: 'c-ramp', wT: 'c-wb', wL: 'c-wb', wR1: 'c-wbr', wR2: 'c-wbr' };
+// shortcut: demand is illustrative (veh/s), not counted on site; swap in real counts if you get them.
+const SOURCES = [
+  // eastbound from the left, the Allen S ramp and the right turns onto Allen N run above capacity: always a queue
+  { seg: 'wEB1', rate: 0.6, pick: () => 'eL1' },
+  { seg: 'wEB2', rate: 0.6, pick: () => (Math.random() < 0.8 ? 'eL2' : 'eT') }, // right lane: 80% turn left onto Allen N
+  { seg: 'wBus', rate: 1.3 / 100, pick: () => 'bus' }, // eastbound buses into the station
+  { seg: 'rL', rate: 0.6, pick: () => 'sbl' },
+  { seg: 'rR', rate: 0.6, pick: () => 'sbr' },
+  { seg: 'eWTa', rate: 0.084, pick: () => 'wT' }, // light westbound through past Allen N
+  { seg: 'eWTa', rate: 0.4 / 120, pick: () => 'busW' }, // few westbound buses
+  { seg: 'eWTa', rate: 0.008, pick: () => 'wL' },
+  { seg: 'eR1', rate: 0.6, pick: () => 'wR1' },
+  { seg: 'eR2', rate: 0.6, pick: () => 'wR2' },
+];
+
+// ---- Simulation (metres, seconds) ----
+let playing = true, speed = 4, simT = 0;
+let cars = [], peds = [], leftCounts = {}, eastCounts = {}, rightCounts = {};
+const plan = () => PLAN;
+const A = 2.2, B = 2.8, S0 = 1.8, TH = 0.9; // about 1 car per 2 s per lane leaving a queue
+function tailOf(list) { let t = null; for (const o of list || []) if (!t || o.d < t.d) t = o; return t; }
+const pedsOn = mv => peds.some(q => q.mv === mv);
+// a crosswalk is busy while it shows walk or the flashing countdown, or anyone is still on it
+const xwBusy = (p, t, mv) => sig(p, mv, t) !== 'R' || pedsOn(mv);
+function curbLaneClear(c) { // loop exit: nothing in the westbound curb lane nearby
+  return !cars.some(o => { if (o === c) return false; const [x, y] = pxAt(o); return x > 545 && x < 650 && Math.abs(y - yGo) < 6; });
+}
+function eastboundClear() { // left into Strathearn: no eastbound car about to pass
+  return !cars.some(o => { if (!o.route.includes('eEB')) return false; const [x, y] = pxAt(o); return y > 296 && x > 680 && x < 790; });
+}
+function westboundClear(p, t) { // bus waiting mid-intersection at Allen S
+  const wbGo = sig(p, 'WBT_S', t) !== 'R'; // cars slowing for a westbound red aren't oncoming traffic
+  return !cars.some(o => {
+    if (o.route[o.i] === 'sBusR' || !(o.route.includes('sWBi') || o.route.includes('sWBo'))) return false;
+    const [x, y] = pxAt(o);
+    if (y < 250 || y > 286) return false;
+    return o.route[o.i] === 'sWBi' || o.route[o.i] === 'sWBo' || (wbGo && o.v > 1 && x > S_WB && x < 560);
+  });
+}
+function mustStop(c, ki, dist, p, t, by) {
+  if (c.commit === ki) return false;
+  const mv = SEG[c.route[ki]].mv;
+  if (mv === 'YIELD') { if (dist < 3 && eastboundClear()) { c.commit = ki; return false; } return true; }
+  if (mv === 'STOP') {
+    if (c.stopped !== ki) { if (dist < 3 && c.v < 0.3) c.stopped = ki; return true; }
+    if (curbLaneClear(c)) { c.commit = ki; return false; }
+    return true;
+  }
+  if (mv === 'BUSL') {
+    if (dist < 3 && (sig(p, 'BUS_S', t) !== 'R' || (westboundClear(p, t) && !xwBusy(p, t, 'PRS')))) { c.commit = ki; return false; }
+    return true;
+  }
+  const busInBox = (by.sBusA || []).length + (by.sBusB || []).length;
+  if (mv === 'SBL' && busInBox) return true; // a bus finishing its left goes first
+  if (mv === 'BUSIN' && busInBox) return true; // only one bus waits in the intersection at a time
+  if (mv === 'SBR' && xwBusy(p, t, 'PW')) return true; // right turn waits for a solid don't walk and an empty crosswalk
+  const st = mv === 'BUSIN' ? (sig(p, 'BUS_S', t) === 'G' ? 'G' : sig(p, 'EBT_S', t))
+    : mv === 'BUSR' ? (xwBusy(p, t, 'PRS') ? 'R' : sig(p, 'WBT_S', t))
+    : sig(p, mv, t);
+  const nxt = c.route[ki + 1];
+  let blocked = false;
+  if (nxt) { // don't enter the box unless there's room on the far side
+    const tail = tailOf(by[nxt]);
+    const inBox = (by[c.route[ki]] || []).filter(o => o.route[o.i + 1] === nxt).length;
+    const room = (tail ? tail.d - tail.len : 1e9) - inBox * 6.6;
+    blocked = room < c.len + 1 && (!tail || tail.v < 3);
+  }
+  if (st === 'G') { if (blocked) return true; if (dist < 3) c.commit = ki; return false; }
+  if (st === 'Y' && !blocked && dist < (c.v * c.v) / 6 + 1) { c.commit = ki; return false; }
+  return true;
+}
+function accel(c, p, t, by) {
+  const v0 = c.bus ? 13.2 : 16.7; // about 60 km/h for cars, 48 km/h for buses
+  const term = (gap, vl) => {
+    gap = Math.max(gap, 0.2);
+    const ss = S0 + Math.max(0, c.v * TH + (c.v * (c.v - vl)) / (2 * Math.sqrt(A * B)));
+    return -A * (ss / gap) ** 2;
+  };
+  let worst = 0, off = -c.d, found = false;
+  if (c.bus && c.route[c.i] === 'loop' && !c.dwelt && c.d < PLATFORM + 0.5) worst = term(PLATFORM - c.d, 0);
+  for (let k = c.i; k < c.route.length && off < 150; k++) {
+    const sg = SEG[c.route[k]];
+    if (!found) {
+      let m = null;
+      for (const o of by[sg.id] || []) if (o !== c && (k > c.i || o.d > c.d) && (!m || o.d < m.d)) m = o;
+      if (m) { worst = Math.min(worst, term(off + m.d - m.len, m.v)); found = true; }
+    }
+    const nx = c.route[k + 1];
+    if (nx && SEG[nx].mv) {
+      const dist = off + sg.len - 0.5;
+      if (dist > 0 && mustStop(c, k + 1, dist, p, t, by)) { worst = Math.min(worst, term(dist, 0)); break; }
+    }
+    off += sg.len;
+  }
+  return Math.max(-9, A * (1 - (c.v / v0) ** 4) + worst);
+}
+function count(store) { const k = Math.floor(simT / CYCLE); store[k] = (store[k] || 0) + 1; }
+function step(dt) {
+  simT += dt;
+  const t = simT % CYCLE, p = plan(), by = {};
+  for (const c of cars) (by[c.route[c.i]] ||= []).push(c);
+  for (const s of SOURCES) {
+    if (Math.random() < s.rate * dt) s.pending = Math.min(s.pending + 1, 99);
+    if (s.pending > 0) {
+      const tail = tailOf(by[s.seg]);
+      if (!tail || tail.d - tail.len > 6) {
+        const r = s.pick(), bus = r.startsWith('bus');
+        const c = { route: ROUTES[r], rk: r, i: 0, d: 0, v: tail ? Math.min(tail.v, 12) : 12, len: bus ? 12 : 4.6, bus, commit: -1 };
+        cars.push(c); (by[s.seg] ||= []).push(c); s.pending--;
+      }
+    }
+  }
+  for (const c of cars) c.acc = accel(c, p, t, by);
+  const keep = [];
+  for (const c of cars) {
+    c.v = Math.max(0, c.v + c.acc * dt);
+    c.d += c.v * dt;
+    let gone = false;
+    while (c.d > SEG[c.route[c.i]].len) {
+      c.d -= SEG[c.route[c.i]].len;
+      if (++c.i >= c.route.length) { gone = true; break; }
+      const id = c.route[c.i];
+      if (id === 'sL1' || id === 'sR') count(eastCounts);
+      if (id === 'nL1' || id === 'nL2') count(leftCounts);
+      if (id === 'nR1' || id === 'nR2') count(rightCounts);
+    }
+    if (c.bus && !gone && c.route[c.i] === 'loop' && !c.dwelt && Math.abs(c.d - PLATFORM) < 3 && c.v < 0.3 && (c.dwell = (c.dwell || 0) + dt) > 15) c.dwelt = true;
+    if (!gone) keep.push(c);
+  }
+  cars = keep;
+  for (const [mv, , , , , , a, b] of CROSSWALKS) {
+    if (sig(p, mv, t) === 'W' && Math.random() < 0.1 * dt) {
+      const fwd = Math.random() < 0.5;
+      peds.push({ mv, from: fwd ? a : b, to: fwd ? b : a, f: 0, len: Math.hypot(b[0] - a[0], b[1] - a[1]) / K, j: Math.random() - 0.5 });
+    }
+  }
+  for (const q of peds) q.f += (1.3 * dt) / q.len;
+  peds = peds.filter(q => q.f < 1);
+}
+function reset() {
+  cars = []; peds = []; simT = 0; leftCounts = {}; eastCounts = {}; rightCounts = {};
+  for (const s of SOURCES) s.pending = 0;
+  for (let i = 0; i < 2400; i++) step(0.1); // warm up two cycles so queues look real
+}
+let css = {};
+function readCss() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ped', 'c-left', 'c-thru', 'c-ramp', 'c-wb', 'c-wbr', 'c-bus']) css[k] = cs.getPropertyValue('--' + k).trim();
+}
+function drawCars() {
+  const dpr = window.devicePixelRatio || 1, w = mapEl.clientWidth, h = mapEl.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const s = (w / IMG_W) * dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(s, 0, 0, s, 0, 0);
+  for (const c of cars) {
+    const [x, y, a] = posAt(SEG[c.route[c.i]], Math.max(0, c.d - c.len / 2));
+    ctx.save(); ctx.translate(x * K, y * K); ctx.rotate(a);
+    ctx.fillStyle = css[COLOR[c.rk]];
+    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 0.6;
+    const L = c.len * K, Wd = c.bus ? 5.4 : 4.4;
+    ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L, Wd, 1); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.fillStyle = css.ped;
+  for (const q of peds) {
+    const vert = q.from[0] === q.to[0];
+    let x = q.from[0] + (q.to[0] - q.from[0]) * q.f, y = q.from[1] + (q.to[1] - q.from[1]) * q.f;
+    if (vert) x += q.j * 4; else y += q.j * 4;
+    ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.fill();
+  }
+}
+
+// ---- Timing chart ----
+const ROWS = [
+  ['Allen Rd S signal'],
+  ['EBT_S', 'Eglinton eastbound through'], ['WBT_S', 'Eglinton westbound through'], ['BUS_S', 'Bus left into station'],
+  ['SBL', 'Allen S ramp, left lane'], ['SBR', 'Allen S ramp, right lane (yields to walkers)'],
+  ['PW', 'Walk: Main entrance ↔ 13 Div'], ['PRS', 'Walk: across Allen S ramp'],
+  ['Allen Rd N signal'],
+  ['EBT_N', 'Eglinton eastbound through'], ['EBL_N', 'Eastbound left onto Allen N'], ['WBT_N', 'Eglinton westbound through'],
+  ['WBR_N', 'Westbound right onto Allen N (2 lanes)'], ['PRN', 'Walk: across Allen N ramp'], ['PE', 'Walk: Strathearn ↔ Secondary'],
+];
+const gantt = document.getElementById('gantt');
+const pct = s => (s / CYCLE) * 100 + '%';
+function pieces(a, b) { return a >= CYCLE ? [[a - CYCLE, b - CYCLE]] : b <= CYCLE ? [[a, b]] : [[a, CYCLE], [0, b - CYCLE]]; }
+function buildGantt() {
+  const p = plan();
+  let h = `<span class="g-lab">Phase</span><div class="g-bar" id="phases">` +
+    BANDS.map(([a, b, n], i) => `<span data-i="${i}" style="left:${pct(a)};width:calc(${pct(b - a)} - 2px)" title="${n}">${n}</span>`).join('') + `</div>`;
+  for (const r of ROWS) {
+    if (r.length === 1) { h += `<div class="g-group">${r[0]}</div>`; continue; }
+    const [mv, lab] = r;
+    const isPed = mv.startsWith('P');
+    const segs = (p[mv] || []).flatMap(([a, b, s]) => pieces(a, b).map(([x, y]) => `<span class="${s}" style="left:${pct(x)};width:${pct(y - x)}"></span>`)).join('');
+    h += `<span class="g-lab" title="${lab}">${lab}</span><div class="g-bar${isPed ? ' ped' : ''}">${segs}</div>`;
+  }
+  h += `<span class="g-lab"></span><div class="g-bar" style="background:transparent;color:var(--muted);font:12px var(--f-mono)">` +
+    [0, 20, 40, 60, 80, 100, 120].map((s, i, a) => `<span style="left:${pct(s)};transform:translateX(${i === 0 ? '0' : i === a.length - 1 ? '-100%' : '-50%'})">${s}s</span>`).join('') + `</div>`;
+  h += `<div class="playhead" aria-hidden="true"></div>`;
+  gantt.innerHTML = h;
+}
+const $ = id => document.getElementById(id);
+const WORD = { G: 'green', Y: 'amber', R: 'red', W: 'walk', F: 'countdown' };
+function render() {
+  const p = plan(), t = simT % CYCLE, blink = Math.floor(simT * 2) % 2 === 0;
+  for (const [mv, d, label] of headEls) {
+    const st = sig(p, mv, t);
+    d.className = 'head ' + st; d.setAttribute('aria-label', `${label}: ${WORD[st]}`);
+  }
+  for (const [mv, d, label] of xwEls) {
+    const st = sig(p, mv, t);
+    d.className = 'xw ' + st + (st === 'F' && !blink ? ' off' : '');
+    d.setAttribute('aria-label', `Crosswalk ${label}: ${st === 'R' ? 'not enabled' : WORD[st]}`);
+  }
+  gantt.style.setProperty('--p', t / CYCLE);
+  $('clock').textContent = Math.floor(t) + ' s';
+  const bands = BANDS, bi = bands.findIndex(([a, b]) => t >= a && t < b);
+  $('phase').textContent = bands[bi][2];
+  document.querySelectorAll('#phases span').forEach(s => s.classList.toggle('on', +s.dataset.i === bi));
+  const last = store => (store[Math.floor(simT / CYCLE) - 1] || 0);
+  $('left').textContent = last(leftCounts) + ' cars';
+  $('lefth').textContent = `last full cycle, about ${last(leftCounts) * 30} an hour`;
+  $('right').textContent = last(rightCounts) + ' cars';
+  $('east').textContent = last(eastCounts) + ' cars';
+  drawCars();
+}
+
+$('play').onclick = () => { playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play'; };
+document.querySelectorAll('#speeds button').forEach(b => (b.onclick = () => {
+  speed = +b.dataset.s;
+  document.querySelectorAll('#speeds button').forEach(x => x.setAttribute('aria-pressed', x === b));
+}));
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { playing = false; $('play').textContent = 'Play'; }
+// keyboard: space = pause/play, 1/2/4/8 = speed (the only controls in the recording layout)
+addEventListener('keydown', e => {
+  if (e.key === ' ') { e.preventDefault(); $('play').click(); }
+  const b = document.querySelector(`#speeds button[data-s="${e.key}"]`);
+  if (b) b.click();
+});
+
+const bad = conflictCheck();
+$('note').textContent = (bad.length
+  ? `Conflict check failed: ${bad.slice(0, 3).join(', ')}.`
+  : 'Conflict check passed: no two conflicting movements are ever green, amber or walking at the same time.') +
+  ' Traffic volumes are made up to show the pattern, not counted on site; eastbound, the Allen S ramp and the right turns onto Allen N are kept saturated. The Allen S ramp right lane is green with the left lane but waits until the west crosswalk shows a solid red hand and is empty; turning buses wait the same way at the Allen S ramp crosswalk. The left into Strathearn and the Strathearn crosswalk have no signals, so they have no markers.';
+
+readCss();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readCss);
+reset(); buildGantt();
+let lastNow = performance.now();
+function frame(now) {
+  const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+  if (playing) { const total = dt * speed, n = Math.ceil(total / 0.1); for (let i = 0; i < n; i++) step(total / n); }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
