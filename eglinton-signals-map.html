@@ -20,8 +20,6 @@
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 .wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:20px 40px;display:grid;gap:16px}
 h1{font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,3.5vw,2.2rem);line-height:1.1;margin:0;text-wrap:balance}
-.lead{margin:4px 0 0;color:var(--muted);max-width:68ch}
-.lead a{color:var(--accent)}
 .card{background:var(--surface);border:1px solid var(--rule);border-radius:6px}
 .mapwrap{overflow-x:auto}
 .map{position:relative;min-width:620px}
@@ -71,7 +69,7 @@ body.record{margin:0;min-height:100vh;display:flex;align-items:center}
   grid-template-areas:"head head" "map stats" "map gantt" "legc legc" "legs legs"}
 .record header{grid-area:head} .record .mapwrap{grid-area:map} .record #legc{grid-area:legc} .record #legs{grid-area:legs}
 .record .stats{grid-area:stats;grid-template-columns:1fr 1fr} .record .gwrap{grid-area:gantt;align-self:stretch}
-.record .controls,.record .lead{display:none}
+.record .controls{display:none}
 .record .gantt{--lab:200px;row-gap:2px}
 .record .g-bar{height:15px} .record .g-lab{line-height:15px} .record .g-group{margin-top:5px}
 </style>
@@ -79,7 +77,6 @@ body.record{margin:0;min-height:100vh;display:flex;align-items:center}
 <div class="wrap">
   <header>
     <h1>Eglinton and Allen Road</h1>
-    <p class="lead">Live signals and traffic drawn on the reference map: each square is a signal head, each coloured bar is a crosswalk, and the purple cars are eastbound drivers turning left onto Allen Rd N. The earlier drawn version is <a href="eglinton-signals.html">here</a>.</p>
   </header>
 
   <div class="card mapwrap"><div class="map" id="map"><img src="eglinton-map.png" alt="Reference map of Eglinton Ave W at Allen Rd S and Allen Rd N with Eglinton West Station and its entrances"></div></div>
