@@ -59,7 +59,6 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0}
 #phases span{border:1px solid var(--rule);border-radius:2px;background:var(--bg);font-size:12px;font-weight:600;padding:0 6px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #phases span.on{border-color:var(--accent);color:var(--accent)}
 .playhead{position:absolute;top:0;bottom:22px;width:2px;background:var(--ink);left:calc(var(--lab) + (100% - var(--lab)) * var(--p));pointer-events:none}
-.note{font-size:13px;color:var(--muted);max-width:80ch;margin:0}
 @media (max-width:640px){.gantt{--lab:132px;font-size:12px}#phases span{font-size:11px;padding:0 3px}}
 </style>
 
@@ -116,7 +115,6 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0}
     <div class="gantt" id="gantt"></div>
   </section>
 
-  <p class="note" id="note"></p>
 </div>
 
 <script>
@@ -256,7 +254,7 @@ const ROUTES = {
   wL: ['eWL', 'nWL'],
 };
 const COLOR = { eL1: 'c-left', eL2: 'c-left', eT: 'c-thru', bus: 'c-bus', busW: 'c-bus', sbl: 'c-ramp', sbr: 'c-ramp', wT: 'c-wb', wL: 'c-wb', wR1: 'c-wbr', wR2: 'c-wbr' };
-// shortcut: demand is illustrative (veh/s), not counted on site; swap in real counts if you get them.
+// Traffic demand in vehicles per second. Illustrative, not counted on site.
 const SOURCES = [
   // Eastbound from the left and the Allen S ramp run above capacity on purpose: always a queue.
   { seg: 'wEB1', rate: 0.6, pick: () => 'eL1' },
@@ -686,11 +684,7 @@ document.querySelectorAll('#speeds button').forEach(b => (b.onclick = () => {
 }));
 if (matchMedia('(prefers-reduced-motion: reduce)').matches) { playing = false; $('play').textContent = 'Play'; }
 
-const bad = conflictCheck();
-$('note').textContent = (bad.length
-  ? `Conflict check failed: ${bad.slice(0, 3).join(', ')}.`
-  : 'Conflict check passed: in all three plans, no two conflicting movements are ever green, amber or walking at the same time.') +
-  ' Traffic volumes are made up to show the pattern, not counted on site; eastbound and the Allen S ramp are kept saturated so there is always a queue. The current timing is pieced together from a description, and its pedestrian timings are guesses. The Strathearn crosswalk has no signal and is not shown. The westbound left into Strathearn has no light of its own: drivers wait for a gap in eastbound traffic. Buses leave the loop at a stop sign and only turn right (westbound) here, so they never hold up eastbound traffic. On a green at Allen S, a bus turning into the loop pulls into the intersection and waits until no cars or pedestrians are in its way.';
+conflictCheck();
 
 readCss(); resize(); setMode('proposed');
 addEventListener('resize', resize);

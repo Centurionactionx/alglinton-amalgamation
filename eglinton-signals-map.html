@@ -63,7 +63,6 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0}
 #phases span{border:1px solid var(--rule);border-radius:2px;background:var(--bg);font-size:12px;font-weight:600;padding:0 6px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #phases span.on{border-color:var(--accent);color:var(--accent)}
 .playhead{position:absolute;top:0;bottom:22px;width:2px;background:var(--ink);left:calc(var(--lab) + (100% - var(--lab)) * var(--p));pointer-events:none}
-.note{font-size:13px;color:var(--muted);max-width:80ch;margin:0}
 @media (max-width:640px){.gantt{--lab:132px;font-size:12px}#phases span{font-size:11px;padding:0 3px}}
 /* Recording layout (opened from a file): map and legends left, counters and timing chart right, no controls. */
 body.record{margin:0;min-height:100vh;display:flex;align-items:center}
@@ -72,7 +71,7 @@ body.record{margin:0;min-height:100vh;display:flex;align-items:center}
   grid-template-areas:"head head" "map stats" "map gantt" "legc legc" "legs legs"}
 .record header{grid-area:head} .record .mapwrap{grid-area:map} .record #legc{grid-area:legc} .record #legs{grid-area:legs}
 .record .stats{grid-area:stats;grid-template-columns:1fr 1fr} .record .gwrap{grid-area:gantt;align-self:stretch}
-.record .controls,.record .note,.record .lead{display:none}
+.record .controls,.record .lead{display:none}
 .record .gantt{--lab:200px;row-gap:2px}
 .record .g-bar{height:15px} .record .g-lab{line-height:15px} .record .g-group{margin-top:5px}
 </style>
@@ -122,7 +121,6 @@ body.record{margin:0;min-height:100vh;display:flex;align-items:center}
     <div class="gantt" id="gantt"></div>
   </section>
 
-  <p class="note" id="note"></p>
 </div>
 
 <script>
@@ -303,7 +301,7 @@ const ROUTES = {
   wR2: ['eR2', 'nR2', 'ramp2b'],
 };
 const COLOR = { eL1: 'c-left', eL2: 'c-left', eT: 'c-thru', bus: 'c-bus', busW: 'c-bus', sbl: 'c-ramp', sbr: 'c-ramp', wT: 'c-wb', wL: 'c-wb', wR1: 'c-wbr', wR2: 'c-wbr' };
-// shortcut: demand is illustrative (veh/s), not counted on site; swap in real counts if you get them.
+// Traffic demand in vehicles per second. Illustrative, not counted on site.
 const SOURCES = [
   // eastbound from the left, the Allen S ramp and the right turns onto Allen N run above capacity: always a queue
   { seg: 'wEB1', rate: 0.6, pick: () => 'eL1' },
@@ -544,11 +542,7 @@ addEventListener('keydown', e => {
   if (b) b.click();
 });
 
-const bad = conflictCheck();
-$('note').textContent = (bad.length
-  ? `Conflict check failed: ${bad.slice(0, 3).join(', ')}.`
-  : 'Conflict check passed: no two conflicting movements are ever green, amber or walking at the same time.') +
-  ' Traffic volumes are made up to show the pattern, not counted on site; eastbound, the Allen S ramp and the right turns onto Allen N are kept saturated. The Allen S ramp right lane is green with the left lane but waits until the west crosswalk shows a solid red hand and is empty; turning buses wait the same way at the Allen S ramp crosswalk. The left into Strathearn and the Strathearn crosswalk have no signals, so they have no markers.';
+conflictCheck();
 
 readCss();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readCss);
